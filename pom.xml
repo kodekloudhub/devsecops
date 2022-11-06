@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
+	<modelVersion>4.0.0</modelVersion>
+	<parent>
+		<groupId>org.springframework.boot</groupId>
+		<artifactId>spring-boot-starter-parent</artifactId>
+		<version>2.3.5.RELEASE</version>
+		<relativePath /> <!-- lookup parent from repository -->
+	</parent>
+
+	<groupId>com.devsecops</groupId>
+	<artifactId>numeric</artifactId>
+	<version>0.0.1</version>
+	<name>numeric</name>
+	<description>Demo for DevSecOps</description>
+
+	<properties>
+		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
+		<java.version>1.8</java.version>
+		<tomcat.version>9.0.43</tomcat.version>
+		<spring-security.version>5.4.4</spring-security.version>
+	</properties>
+
+	<dependencies>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-web</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter</artifactId>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-test</artifactId>
+			<scope>test</scope>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springdoc</groupId>
+			<artifactId>springdoc-openapi-ui</artifactId>
+			<version>1.2.30</version>
+		</dependency>
+		
+		<dependency>
+		    <groupId>org.springframework.boot</groupId>
+		    <artifactId>spring-boot-starter-security</artifactId>
+		</dependency>
+	</dependencies>
+
+	<build>
+		<plugins>
+			<plugin>
+				<groupId>org.springframework.boot</groupId>
+				<artifactId>spring-boot-maven-plugin</artifactId>
+			</plugin>
+			<!--                   Jacoco Plugin                   -->
+			   <plugin>
+			    <groupId>org.jacoco</groupId>
+			    <artifactId>jacoco-maven-plugin</artifactId>
+			    <version>0.8.5</version>
+			    <executions>
+			     <execution>
+			      <goals>
+			       <goal>prepare-agent</goal>
+			      </goals>
+			     </execution>
+			     <execution>
+			      <id>report</id>
+			      <phase>test</phase>
+			      <goals>
+			       <goal>report</goal>
+			      </goals>
+			     </execution>
+			    </executions>
+			   </plugin>
+
+			   <!--                   PITest Mutation Plugin                   -->
+			   <plugin>
+			    <groupId>org.pitest</groupId>
+			    <artifactId>pitest-maven</artifactId>
+			    <version>1.5.0</version>
+			    <dependencies>
+			     <dependency>
+			      <groupId>org.pitest</groupId>
+			      <artifactId>pitest-junit5-plugin</artifactId>
+			      <version>0.12</version>
+			     </dependency>
+			    </dependencies>
+			    <configuration>
+			     <mutationThreshold>70</mutationThreshold>
+			     <outputFormats>
+			             <outputFormat>XML</outputFormat>
+			             <outputFormat>HTML</outputFormat>
+			        </outputFormats>
+			    </configuration>
+			   </plugin>
+
+			<!--                   Dependency Check Plugin                   -->
+			   <plugin>
+			    <groupId>org.owasp</groupId>
+			    <artifactId>dependency-check-maven</artifactId>
+			    <version>6.1.6</version>
+			    <configuration>
+			     <format>ALL</format>
+			     <failBuildOnCVSS>8</failBuildOnCVSS> <!-- fail the build for CVSS greater than or equal to 9 -->
+
+			     <!-- 
+			      use internal mirroring of CVE contents 
+			      Suppress files 
+			      E.g. a company-wide suppression file and local project file 
+			     -->
+			     <!-- 
+			     <cveUrlModified>http://internal-mirror.mycorp.com/nvdcve-1.1-modified.json.gz</cveUrlModified>  
+			                    <cveUrlBase>http://internal-mirror.mycorp.com/nvdcve-1.1-%d.json.gz</cveUrlBase>
+			     <suppressionFiles>               
+			                        <suppressionFile>http://example.org/suppression.xml</suppressionFile>
+			                        <suppressionFile>project-suppression.xml</suppressionFile> 
+			                    </suppressionFiles> 
+			                 -->
+			    </configuration>
+			   </plugin>
+
+		</plugins>
+	</build>
+
+</project>

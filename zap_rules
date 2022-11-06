@@ -1,0 +1,7 @@
+# zap-api-scan rule configuration file
+# Change WARN to IGNORE to ignore rule or FAIL to fail if rule matches
+# Active scan rules set to IGNORE will not be run which will speed up the scan
+# Only the rule identifiers are used - the names are just for info
+# You can add your own messages to each rule by appending them after a tab on each line.
+100001	IGNORE	http://devsecops-demo.eastus.cloudapp.azure.com:31933/
+100000	IGNORE	http://devsecops-demo.eastus.cloudapp.azure.com:31933/
