@@ -17,7 +17,7 @@ deb http://apt.kubernetes.io/ kubernetes-xenial main
 EOF
 
 KUBE_VERSION=1.26.3
-sudo sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf
+sudo sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf | true
 apt-get update
 apt-get upgrade -y
 apt-get install -y kubelet=${KUBE_VERSION}-00 wget vim build-essential jq python3-pip kubectl=${KUBE_VERSION}-00 runc kubernetes-cni=1.2.0-00 kubeadm=${KUBE_VERSION}-00
@@ -31,6 +31,7 @@ jc dmidecode | jq .[1].values.uuid -r
 wget https://github.com/containerd/containerd/releases/download/v1.7.0/containerd-1.7.0-linux-amd64.tar.gz
 sudo tar Czxvf /usr/local containerd-1.7.0-linux-amd64.tar.gz
 wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
+mkdir -p /usr/lib/systemd/system
 mv containerd.service /usr/lib/systemd/system/
 mkdir -p /etc/containerd/
 containerd config default > /etc/containerd/config.toml
