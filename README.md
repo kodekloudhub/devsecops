@@ -1,5 +1,5 @@
 
-# DevSecOps - Kubernetes Devops & Security
+# DevSecOps - Kubernetes DevOps & Security
 
 These are the code files from the [DevSecOps course](https://kodekloud.com/courses/devsecops/) hosted on KodeKloud.
 
