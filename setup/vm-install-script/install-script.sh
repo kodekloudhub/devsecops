@@ -6,22 +6,19 @@ PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[
 echo "PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '" >> ~/.bashrc
 sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
 source ~/.bashrc
-
+export DEBIAN_FRONTEND=noninteractive 
 apt-get autoremove -y  #removes the packages that are no longer needed
 apt-get update
 systemctl daemon-reload
 
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
-EOF
+curl -fsSL https://pkgs.k8s.io/core:/stable:/v1.29/deb/Release.key | sudo gpg --batch --yes --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo 'deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/v1.29/deb/ /' >  /etc/apt/sources.list.d/kubernetes.list
 
-KUBE_VERSION=1.26.3
-sudo sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf | true
+sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf | true
 apt-get update
 apt-get upgrade -y
-apt-get install -y kubelet=${KUBE_VERSION}-00 wget vim build-essential jq python3-pip kubectl=${KUBE_VERSION}-00 runc kubernetes-cni=1.2.0-00 kubeadm=${KUBE_VERSION}-00
-sudo apt-mark hold kubeadm kubectl kubelet
+apt-get install -y kubelet wget vim build-essential jq python3-pip kubectl runc kubernetes-cni kubeadm
+apt-mark hold kubeadm kubectl kubelet
 pip3 install jc
 
 ### UUID of VM 
@@ -29,7 +26,7 @@ pip3 install jc
 jc dmidecode | jq .[1].values.uuid -r
 
 wget https://github.com/containerd/containerd/releases/download/v1.7.0/containerd-1.7.0-linux-amd64.tar.gz
-sudo tar Czxvf /usr/local containerd-1.7.0-linux-amd64.tar.gz
+tar Czxvf /usr/local containerd-1.7.0-linux-amd64.tar.gz
 wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
 mkdir -p /usr/lib/systemd/system
 mv containerd.service /usr/lib/systemd/system/
@@ -69,8 +66,12 @@ echo "untaint controlplane node"
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 kubectl get node -o wide
 
+echo 'source <(kubectl completion bash)' >> ~/.bashrc
+source ~/.bashrc
+
 echo ".........----------------#################._.-.-Java and MAVEN-.-._.#################----------------........."
-apt install openjdk-11-jdk -y
+mkdir -p /usr/share/man/man1
+apt install openjdk-17-jdk -y
 java -version
 apt install -y maven
 mvn -v
