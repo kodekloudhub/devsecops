@@ -1,5 +1,4 @@
 #!/bin/bash
-set -e
 
 echo ".........----------------#################._.-.-INSTALL-.-._.#################----------------........."
 PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m\]\w\[\e[01;37m\]\$\[\033[0;37m\] '
@@ -7,83 +6,86 @@ echo "PS1='\[\e[01;36m\]\u\[\e[01;37m\]@\[\e[01;33m\]\H\[\e[01;37m\]:\[\e[01;32m
 sed -i '1s/^/force_color_prompt=yes\n/' ~/.bashrc
 source ~/.bashrc
 
+# Don't ask to restart services after apt update, just do it.
+[ -f /etc/needrestart/needrestart.conf ] && sed -i 's/#\$nrconf{restart} = \x27i\x27/$nrconf{restart} = \x27a\x27/' /etc/needrestart/needrestart.conf
+
 apt-get autoremove -y  #removes the packages that are no longer needed
 apt-get update
 systemctl daemon-reload
 
-curl https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
-cat <<EOF > /etc/apt/sources.list.d/kubernetes.list
-deb http://apt.kubernetes.io/ kubernetes-xenial main
-EOF
+KUBE_LATEST=$(curl -L -s https://dl.k8s.io/release/stable.txt | awk 'BEGIN { FS="." } { printf "%s.%s", $1, $2 }')
+mkdir -p /etc/apt/keyrings
+curl -fsSL https://pkgs.k8s.io/core:/stable:/${KUBE_LATEST}/deb/Release.key | gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${KUBE_LATEST}/deb/ /" >> /etc/apt/sources.list.d/kubernetes.list
 
-KUBE_VERSION=1.26.3
-sudo sed -i 's/#$nrconf{restart} = '"'"'i'"'"';/$nrconf{restart} = '"'"'a'"'"';/g' /etc/needrestart/needrestart.conf | true
 apt-get update
-apt-get upgrade -y
-apt-get install -y kubelet=${KUBE_VERSION}-00 wget vim build-essential jq python3-pip kubectl=${KUBE_VERSION}-00 runc kubernetes-cni=1.2.0-00 kubeadm=${KUBE_VERSION}-00
-sudo apt-mark hold kubeadm kubectl kubelet
+KUBE_VERSION=$(apt-cache madison kubeadm | head -1 | awk '{print $3}')
+apt-get install -y docker.io vim build-essential jq python3-pip kubelet kubectl kubernetes-cni kubeadm containerd
 pip3 install jc
 
-### UUID of VM 
+### UUID of VM
 ### comment below line if this Script is not executed on Cloud based VMs
 jc dmidecode | jq .[1].values.uuid -r
 
-wget https://github.com/containerd/containerd/releases/download/v1.7.0/containerd-1.7.0-linux-amd64.tar.gz
-sudo tar Czxvf /usr/local containerd-1.7.0-linux-amd64.tar.gz
-wget https://raw.githubusercontent.com/containerd/containerd/main/containerd.service
-mkdir -p /usr/lib/systemd/system
-mv containerd.service /usr/lib/systemd/system/
-mkdir -p /etc/containerd/
-containerd config default > /etc/containerd/config.toml
-sed -i 's/SystemdCgroup \= false/SystemdCgroup \= true/g' /etc/containerd/config.toml
-crictl config runtime-endpoint unix:///var/run/containerd/containerd.sock
-echo "alias docker='crictl'" > /etc/profile.d/00-alises.sh
-alias docker='crictl'
-systemctl daemon-reload
-systemctl enable --now containerd
-
 systemctl enable kubelet
-systemctl start kubelet
 
 echo ".........----------------#################._.-.-KUBERNETES-.-._.#################----------------........."
-rm /root/.kube/config | true
+rm -f /root/.kube/config
 kubeadm reset -f
-modprobe br_netfilter
-sed -ir 's/#{1,}?net.ipv4.ip_forward ?= ?(0|1)/net.ipv4.ip_forward = 1/g' /etc/sysctl.conf
-sysctl -w net.ipv4.ip_forward=1
-sed -i '/ swap / s/^ (.*)$/#1/g' /etc/fstab
-swapoff -a
+
+mkdir -p /etc/containerd
+containerd config default | sed 's/SystemdCgroup = false/SystemdCgroup = true/' > /etc/containerd/config.toml
+systemctl restart containerd
 
 # uncomment below line if your host doesnt have minimum requirement of 2 CPU
-# kubeadm init --kubernetes-version=${KUBE_VERSION} --ignore-preflight-errors=NumCPU --skip-token-print
-kubeadm init --kubernetes-version=${KUBE_VERSION} --skip-token-print
+# kubeadm init --pod-network-cidr '10.244.0.0/16' --service-cidr '10.96.0.0/16' --ignore-preflight-errors=NumCPU --skip-token-print
+kubeadm init --pod-network-cidr '10.244.0.0/16' --service-cidr '10.96.0.0/16'  --skip-token-print
 
 mkdir -p ~/.kube
-cp -f /etc/kubernetes/admin.conf ~/.kube/config
+cp -i /etc/kubernetes/admin.conf ~/.kube/config
 
 kubectl apply -f "https://github.com/weaveworks/weave/releases/download/v2.8.1/weave-daemonset-k8s-1.11.yaml"
-echo "Waiting 60 seconds"
-sleep 60
+kubectl rollout status daemonset weave-net -n kube-system --timeout=90s
+sleep 5
 
 echo "untaint controlplane node"
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-kubectl get node -o wide
+node=$(kubectl get nodes -o=jsonpath='{.items[0].metadata.name}')
+for taint in $(kubectl get node $node -o jsonpath='{range .spec.taints[*]}{.key}{":"}{.effect}{"-"}{end}')
+do
+    kubectl taint node $node $taint
+done
+kubectl get nodes -o wide
+
+echo ".........----------------#################._.-.-Docker-.-._.#################----------------........."
+
+cat > /etc/docker/daemon.json <<EOF
+{
+  "exec-opts": ["native.cgroupdriver=systemd"],
+  "log-driver": "json-file",
+  "storage-driver": "overlay2"
+}
+EOF
+mkdir -p /etc/systemd/system/docker.service.d
+
+systemctl daemon-reload
+systemctl restart docker
+systemctl enable docker
+
 
 echo ".........----------------#################._.-.-Java and MAVEN-.-._.#################----------------........."
-apt install openjdk-11-jdk -y
+apt install openjdk-11-jdk maven -y
 java -version
-apt install -y maven
 mvn -v
 
 echo ".........----------------#################._.-.-JENKINS-.-._.#################----------------........."
-wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | sudo apt-key add -
-sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io-2023.key | gpg --dearmor -o /usr/share/keyrings/jenkins.gpg
+echo 'deb [signed-by=/usr/share/keyrings/jenkins.gpg] http://pkg.jenkins.io/debian-stable binary/' > /etc/apt/sources.list.d/jenkins.list
 apt update
 apt install -y jenkins
 systemctl daemon-reload
 systemctl enable jenkins
 systemctl start jenkins
-systemctl status jenkins --no-pager
+usermod -a -G docker jenkins
 echo "jenkins ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
 
 echo ".........----------------#################._.-.-COMPLETED-.-._.#################----------------........."
