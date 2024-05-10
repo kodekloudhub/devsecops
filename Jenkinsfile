@@ -1,7 +1,7 @@
 @Library('slack') _
 
 
-/////// ******************************* Code for fectching Failed Stage Name ******************************* ///////
+/////// ******************************* Code for fectching Failed Stage Name ******************************* ////////
 import io.jenkins.blueocean.rest.impl.pipeline.PipelineNodeGraphVisitor
 import io.jenkins.blueocean.rest.impl.pipeline.FlowNodeWrapper
 import org.jenkinsci.plugins.workflow.support.steps.build.RunWrapper
